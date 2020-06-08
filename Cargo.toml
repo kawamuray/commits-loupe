@@ -1,0 +1,31 @@
+[package]
+name = "commits-loupe"
+version = "0.1.0"
+authors = ["Yuto Kawamura <kawamuray.dadada@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+log = "0.4.8"
+wasm-bindgen = { version = "0.2.63", features = ["serde-serialize"] }
+wasm-logger = "0.2.0"
+wee_alloc = { version = "0.4.5", optional = true }
+yew = "0.16.2"
+js-sys = "0.3.40"
+jmespatch = "0.3.0"
+anyhow = "1.0.31"
+serde_derive = "1.0.111"
+serde = "1.0.111"
+
+[dependencies.web-sys]
+version = "0.3.40"
+features = [
+  'Headers',
+  'Request',
+  'RequestInit',
+  'RequestMode',
+  'Response',
+  'Window',
+]
