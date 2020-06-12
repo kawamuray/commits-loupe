@@ -1,10 +1,25 @@
-import("./pkg").then(module => {
-    module.init_page({
+import("./pkg").then(cloupe => {
+    cloupe.create({
         // element: document.getElementById("#screen"),
-        element: "#screen",
+        on: "#screen",
         repo: "kawamuray/decaton",
         branch: "bmt-revise",
-        file: "tasks_100k_latency_0ms_concurrency_20-benchmark.json",
-        query: "performance.throughput",
+        data_url: "commit-data/",
+        components: {
+            show_table: false,
+            show_range: false,
+        },
+        data: [
+            {
+                title: "0ms latency / Throughput",
+                file: "tasks_100k_latency_0ms_concurrency_20-benchmark.json",
+                query: "performance.throughput",
+            },
+            {
+                title: "10ms latency / Throughput",
+                file: "tasks_10k_latency_10ms_concurrency_20-benchmark.json",
+                query: "performance.throughput",
+            }
+        ],
     });
 });

@@ -1,9 +1,17 @@
 #![recursion_limit = "512"]
 
+mod api;
 mod app;
-mod jslib;
+mod cache;
+mod chart;
+mod commit;
+mod component;
+mod config;
+mod dataset;
+mod query;
+mod range;
 
-use js_sys::Reflect;
+use std::convert::TryFrom;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -13,25 +21,16 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-pub fn init_page(config: &JsValue) -> Result<(), JsValue> {
+pub fn create(config: &JsValue) -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::default());
     yew::initialize();
-    let element = Reflect::get(config, &JsValue::from_str("element")).unwrap();
+    let config = config::Config::try_from(config).unwrap();
     let elem = yew::utils::document()
-        .query_selector(&element.as_string().unwrap())
+        .query_selector(&config.on)
         .unwrap()
         .unwrap();
-    let repo = Reflect::get(config, &JsValue::from_str("repo")).unwrap();
-    let branch = Reflect::get(config, &JsValue::from_str("branch")).unwrap();
-    let file = Reflect::get(config, &JsValue::from_str("file")).unwrap();
-    let query = Reflect::get(config, &JsValue::from_str("query")).unwrap();
-    let props = app::ConfigProperties {
-        repo: repo.as_string().unwrap(),
-        branch: Some(branch.as_string().unwrap()),
-        file: file.as_string().unwrap(),
-        query: query.as_string().unwrap(),
-    };
-    yew::App::<app::App>::new().mount_with_props(elem, props);
-    yew::run_loop();
+    let props = component::loupe::Properties { config };
+    yew::App::<component::loupe::LoupeComponent<chart::chartjs::ChartJs>>::new()
+        .mount_with_props(elem, props);
     Ok(())
 }

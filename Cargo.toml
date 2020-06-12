@@ -18,6 +18,10 @@ jmespatch = "0.3.0"
 anyhow = "1.0.31"
 serde_derive = "1.0.111"
 serde = "1.0.111"
+thiserror = "1.0.19"
+http = "0.2.1"
+chrono = "0.4.11"
+url = "2.1.1"
 
 [dependencies.web-sys]
 version = "0.3.40"

@@ -1,23 +1,21 @@
-use crate::jslib;
+use crate::chart::{self, Chart};
 use anyhow::Error;
 use jmespatch;
-use js_sys::{Array, Map, Object};
 use log::*;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use wasm_bindgen::JsValue;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
-pub struct App {
+pub struct App<C: Chart + 'static> {
     link: ComponentLink<Self>,
     props: ConfigProperties,
     data: Vec<CommitData>,
     perf_data: HashMap<String, f64>,
     ft1: Option<FetchTask>,
     fetch_tasks: Vec<FetchTask>,
-    chart_obj: Option<jslib::Chart>,
+    chart_obj: Option<C>,
 }
 
 pub enum Msg {
@@ -34,7 +32,7 @@ pub struct ConfigProperties {
     pub query: String,
 }
 
-impl Component for App {
+impl<C: Chart> Component for App<C> {
     type Message = Msg;
     type Properties = ConfigProperties;
 
@@ -112,84 +110,26 @@ impl Component for App {
                 self.perf_data.insert(commit, v);
 
                 if let Some(chart_obj) = self.chart_obj.take() {
-                    chart_obj.destroy();
+                    drop(chart_obj);
                 }
-                let mut labels = Vec::with_capacity(self.data.len());
+
                 let mut data = Vec::with_capacity(self.data.len());
-                for commit in self.data.iter().rev() {
-                    labels.push(commit.sha.clone());
-                    data.push(*self.perf_data.get(&commit.sha).unwrap_or(&0.0));
+                for commit in self.data.iter() {
+                    let label = commit.sha.clone();
+                    let value = *self.perf_data.get(&commit.sha).unwrap_or(&0.0);
+                    data.push((label, value));
                 }
 
-                let options = Map::new();
-                options.set(&JsValue::from_str("type"), &JsValue::from_str("line"));
-                options.set(
-                    &JsValue::from_str("data"),
-                    &Object::from_entries(
-                        &Map::new()
-                            .set(
-                                &JsValue::from_str("labels"),
-                                &labels
-                                    .into_iter()
-                                    .map(|v| JsValue::from_str(&v))
-                                    .collect::<Array>(),
-                            )
-                            .set(
-                                &JsValue::from_str("datasets"),
-                                &JsValue::from(Array::of1(
-                                    &Object::from_entries(
-                                        &Map::new()
-                                            .set(
-                                                &JsValue::from_str("label"),
-                                                &JsValue::from_str("Throughput"),
-                                            )
-                                            .set(
-                                                &JsValue::from_str("data"),
-                                                &data
-                                                    .into_iter()
-                                                    .map(|v| JsValue::from_f64(v))
-                                                    .collect::<Array>(),
-                                            ),
-                                    )
-                                    .unwrap(),
-                                )),
-                            ),
-                    )
-                    .unwrap(),
-                );
-                options.set(
-                    &JsValue::from_str("options"),
-                    &Object::from_entries(
-                        &Map::new().set(
-                            &JsValue::from_str("scales"),
-                            &Object::from_entries(
-                                &Map::new().set(
-                                    &JsValue::from_str("yAxes"),
-                                    &JsValue::from(Array::of1(&JsValue::from(
-                                        Map::new().set(
-                                            &JsValue::from_str("ticks"),
-                                            Map::new()
-                                                .set(
-                                                    &JsValue::from_str("beginAtZero"),
-                                                    &JsValue::from_bool(true),
-                                                )
-                                                .as_ref(),
-                                        ),
-                                    ))),
-                                ),
-                            )
-                            .unwrap(),
-                        ),
-                    )
-                    .unwrap(),
-                );
-                info!("chart options = {:?}", options);
+                let target = yew::utils::document()
+                    .get_element_by_id("commit-data")
+                    .unwrap();
 
-                let chart = jslib::Chart::new(
-                    yew::utils::document()
-                        .get_element_by_id("commit-data")
-                        .unwrap(),
-                    Object::from_entries(&options).unwrap(),
+                let chart = C::create(
+                    target,
+                    &chart::Config {
+                        title: "Throughput".to_string(),
+                    },
+                    &data,
                 );
                 self.chart_obj.replace(chart);
             }
@@ -218,7 +158,7 @@ impl Component for App {
     }
 }
 
-impl App {
+impl<C: Chart> App<C> {
     fn view_commit_table_entry(&self, commit: &CommitData) -> Html {
         let throughput = *self.perf_data.get(&commit.sha).unwrap_or(&0.0);
         html! {
