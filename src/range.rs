@@ -1,5 +1,7 @@
 use crate::commit::CommitInfo;
+use log::*;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Range {
     pub from: Option<String>,
     pub count: u32,
@@ -20,7 +22,11 @@ impl Range {
     }
 
     pub fn sample(&self, candidates: Vec<CommitInfo>) -> Vec<CommitInfo> {
-        let sample_index = self.count / self.samples;
+        let sample_index = (self.count / self.samples).max(1);
+        debug!(
+            "Sampleing {} from {} with sample_index={}",
+            self.samples, self.count, sample_index
+        );
         let mut samples = Vec::with_capacity(self.samples as usize);
         for (i, commit) in candidates.into_iter().enumerate() {
             if samples.len() == self.samples as usize {
@@ -31,5 +37,9 @@ impl Range {
             }
         }
         samples
+    }
+
+    pub fn zoom(&mut self, factor: f64) {
+        self.count = ((self.count as f64 * factor) as u32).max(self.samples);
     }
 }

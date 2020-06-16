@@ -1,6 +1,7 @@
 use super::container::{self, ContainerComponent};
 use crate::chart::Chart;
 use crate::config::Config;
+use crate::range::Range;
 use std::marker::PhantomData;
 use yew::prelude::*;
 
@@ -9,8 +10,16 @@ pub struct LoupeComponent<C>
 where
     C: Chart + 'static,
 {
+    link: ComponentLink<Self>,
     props: Properties,
+    range: Range,
     phantom: PhantomData<C>,
+}
+
+#[derive(Debug)]
+pub enum Msg {
+    ZoomIn,
+    ZoomOut,
 }
 
 #[derive(Debug, Clone, Properties)]
@@ -25,8 +34,8 @@ impl<C: Chart> LoupeComponent<C> {
         for data in &cfg.data {
             let props = container::Properties {
                 repo: cfg.repo.clone(),
-                branch: cfg.branch.clone(),
                 data_path: cfg.data_url.clone(),
+                range: self.range.clone(),
                 file: data.file.clone(),
                 query: data.query.clone(),
             };
@@ -39,12 +48,16 @@ impl<C: Chart> LoupeComponent<C> {
 }
 
 impl<C: Chart> Component for LoupeComponent<C> {
-    type Message = ();
+    type Message = Msg;
     type Properties = Properties;
 
-    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+    fn create(mut props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let range = Range::new(props.config.branch.take(), 50, 50);
+
         Self {
+            link,
             props,
+            range,
             phantom: PhantomData,
         }
     }
@@ -54,14 +67,28 @@ impl<C: Chart> Component for LoupeComponent<C> {
         true
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
-        true
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        use Msg::*;
+        match msg {
+            ZoomIn => {
+                self.range.zoom(0.5);
+                true
+            }
+            ZoomOut => {
+                self.range.zoom(2.0);
+                true
+            }
+        }
     }
 
     fn view(&self) -> Html {
         html! {
             <div>
-              { for self.view_containers() }
+                <button type="button" onclick=self.link.callback(|_| Msg::ZoomIn)>{ "+ Zoom In" }</button>
+                <button type="button" onclick=self.link.callback(|_| Msg::ZoomOut)>{ "- Zoom Out" }</button>
+              <div class="panels">
+                { for self.view_containers() }
+              </div>
             </div>
         }
     }

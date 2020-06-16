@@ -17,6 +17,7 @@ pub struct ContainerComponent<C>
 where
     C: Chart + 'static,
 {
+    link: ComponentLink<Self>,
     props: Properties,
     data: Option<Rc<CommitViewData>>,
     phantom: PhantomData<C>,
@@ -33,10 +34,28 @@ pub enum Msg {
 #[derive(Debug, Clone, Properties)]
 pub struct Properties {
     pub repo: String,
-    pub branch: Option<String>,
     pub data_path: String,
+    pub range: Range,
     pub file: String,
     pub query: String,
+}
+
+impl<C: Chart> ContainerComponent<C> {
+    fn fetch_view_data(&self) {
+        let cb = self.link.callback(|resp| match resp {
+            Ok(dataset) => Msg::DataReady(dataset),
+            Err(e) => Msg::DataFetchError(anyhow::Error::new(e)),
+        });
+
+        CommitDataSet::collect_range(
+            GitHubApi::new(),
+            CommitMetadataApi::new(self.props.data_path.clone()),
+            &self.props.repo,
+            &self.props.file,
+            self.props.range.clone(),
+            move |resp| cb.emit(resp),
+        );
+    }
 }
 
 impl<C: Chart> Component for ContainerComponent<C> {
@@ -44,31 +63,21 @@ impl<C: Chart> Component for ContainerComponent<C> {
     type Properties = Properties;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let cb = link.callback(|resp| match resp {
-            Ok(dataset) => Msg::DataReady(dataset),
-            Err(e) => Msg::DataFetchError(anyhow::Error::new(e)),
-        });
-
-        let range = Range::new(props.branch.clone(), 50, 50);
-        CommitDataSet::collect_range(
-            GitHubApi::new(),
-            CommitMetadataApi::new(props.data_path.clone()),
-            &props.repo,
-            &props.file,
-            range,
-            move |resp| cb.emit(resp),
-        );
-
-        Self {
+        let this = Self {
+            link,
             props,
             data: None,
             phantom: PhantomData,
-        }
+        };
+        this.fetch_view_data();
+        this
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
         self.props = props;
-        true
+        self.fetch_view_data();
+        // fetch_view_data() will trigger re-rendering.
+        false
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {

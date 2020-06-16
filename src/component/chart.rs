@@ -8,7 +8,6 @@ use yew::prelude::*;
 
 /// A chart component which shows line chart of commits data
 pub struct ChartComponent<C: Chart + 'static> {
-    link: ComponentLink<Self>,
     props: Properties,
     canvas_ref: NodeRef,
     chart: Option<C>,
@@ -64,9 +63,8 @@ impl<C: Chart> Component for ChartComponent<C> {
     type Message = ();
     type Properties = Properties;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
         Self {
-            link,
             props,
             canvas_ref: NodeRef::default(),
             chart: None,
