@@ -33,16 +33,6 @@ impl<C: Chart> ChartComponent<C> {
             drop(chart);
         }
 
-        let datapoints: Vec<_> = data
-            .commits
-            .iter()
-            .map(|c| {
-                (
-                    c.sha.clone(),
-                    *data.metadata.get(&c.sha).expect("no meta value"),
-                )
-            })
-            .collect();
         debug!("Creating new chart with {} datapoints", data.commits.len());
         let target = self
             .canvas_ref
@@ -53,7 +43,7 @@ impl<C: Chart> ChartComponent<C> {
             &chart::Config {
                 title: "Throughput".to_string(),
             },
-            &datapoints,
+            data,
         );
         self.chart.replace(chart);
     }

@@ -1,7 +1,6 @@
 #![recursion_limit = "512"]
 
 mod api;
-mod app;
 mod cache;
 mod chart;
 mod commit;

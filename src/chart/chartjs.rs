@@ -1,6 +1,6 @@
 use crate::chart;
-
-use js_sys::{Array, Map, Object};
+use crate::component::CommitViewData;
+use js_sys::{Array, Map, Object, Reflect};
 use log::*;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
@@ -16,14 +16,21 @@ extern "C" {
     pub fn destroy(this: &Chart);
 }
 
-pub struct ChartJs(Chart);
+pub struct ChartJs {
+    chart: Chart,
+    _on_click: Closure<dyn Fn(JsValue, Array)>,
+}
 
 impl chart::Chart for ChartJs {
-    fn create(target: Element, config: &chart::Config, data: &Vec<chart::ChartData>) -> Self {
-        let mut labels = Vec::with_capacity(data.len());
-        let mut datapoints = Vec::with_capacity(data.len());
-        for (label, value) in data.iter().rev() {
-            labels.push(label);
+    fn create(target: Element, config: &chart::Config, data: &CommitViewData) -> Self {
+        let commits = &data.commits;
+        let mut labels = Vec::with_capacity(commits.len());
+        let mut link_urls = Vec::with_capacity(commits.len());
+        let mut datapoints = Vec::with_capacity(commits.len());
+        for commit in commits.iter().rev() {
+            link_urls.push(commit.view_url.clone());
+            labels.push(&commit.sha);
+            let value = data.metadata.get(&commit.sha).expect("missing meta value");
             datapoints.push(*value);
         }
 
@@ -63,29 +70,43 @@ impl chart::Chart for ChartJs {
             )
             .unwrap(),
         );
+
+        let on_click = Closure::wrap(Box::new(move |_: JsValue, elems: Array| {
+            let index = Reflect::get(&elems.get(0), &JsValue::from_str("_index"))
+                .expect("no elems[0]._index")
+                .as_f64()
+                .unwrap() as usize;
+            let url = &link_urls[index];
+            debug!("ChartJs onClick: index={}, link={}", index, url);
+            yew::utils::window()
+                .open_with_url_and_target(url, "_blank")
+                .expect("set window.location.href");
+        }) as Box<dyn Fn(JsValue, Array)>);
         options.set(
             &JsValue::from_str("options"),
             &Object::from_entries(
-                &Map::new().set(
-                    &JsValue::from_str("scales"),
-                    &Object::from_entries(
-                        &Map::new().set(
-                            &JsValue::from_str("yAxes"),
-                            &JsValue::from(Array::of1(&JsValue::from(
-                                Map::new().set(
-                                    &JsValue::from_str("ticks"),
-                                    Map::new()
-                                        .set(
-                                            &JsValue::from_str("beginAtZero"),
-                                            &JsValue::from_bool(true),
-                                        )
-                                        .as_ref(),
-                                ),
-                            ))),
-                        ),
+                &Map::new()
+                    .set(
+                        &JsValue::from_str("scales"),
+                        &Object::from_entries(
+                            &Map::new().set(
+                                &JsValue::from_str("yAxes"),
+                                &JsValue::from(Array::of1(&JsValue::from(
+                                    Map::new().set(
+                                        &JsValue::from_str("ticks"),
+                                        Map::new()
+                                            .set(
+                                                &JsValue::from_str("beginAtZero"),
+                                                &JsValue::from_bool(true),
+                                            )
+                                            .as_ref(),
+                                    ),
+                                ))),
+                            ),
+                        )
+                        .unwrap(),
                     )
-                    .unwrap(),
-                ),
+                    .set(&JsValue::from_str("onClick"), on_click.as_ref()),
             )
             .unwrap(),
         );
@@ -93,12 +114,15 @@ impl chart::Chart for ChartJs {
 
         let chart = Chart::new(target, Object::from_entries(&options).unwrap());
 
-        ChartJs(chart)
+        ChartJs {
+            chart,
+            _on_click: on_click,
+        }
     }
 }
 
 impl Drop for ChartJs {
     fn drop(&mut self) {
-        self.0.destroy();
+        self.chart.destroy();
     }
 }
