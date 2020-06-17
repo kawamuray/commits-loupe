@@ -5,14 +5,13 @@ use yew::prelude::*;
 
 /// A table component which shows each commit's summary
 pub struct TableComponent {
-    link: ComponentLink<Self>,
     props: Properties,
 }
 
 #[derive(Debug, Clone, Properties)]
 pub struct Properties {
+    pub value_title: String,
     pub data: Option<Rc<CommitViewData>>,
-    pub query: String,
 }
 
 impl TableComponent {
@@ -20,11 +19,10 @@ impl TableComponent {
         let throughput = data.metadata.get(&commit.sha).expect("missing meta value");
         html! {
           <tr>
-            <th><a href=commit.view_url.clone()>{ &commit.sha }</a></th>
-            <th>{ &commit.author.name }</th>
-            <th>{ "&commit.author_date" }</th>
+            <th><a href=commit.view_url.clone()>{ commit.sha_short() }</a></th>
+            <th>{ commit.author_date_str() }</th>
             <th>{ &commit.message }</th>
-            <th>{ throughput }</th>
+            <th>{ format!("{:.2}", throughput) }</th>
           </tr>
         }
     }
@@ -46,8 +44,8 @@ impl Component for TableComponent {
     type Message = ();
     type Properties = Properties;
 
-    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, props }
+    fn create(props: Self::Properties, _link: ComponentLink<Self>) -> Self {
+        Self { props }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
@@ -61,15 +59,18 @@ impl Component for TableComponent {
 
     fn view(&self) -> Html {
         html! {
-          <table>
-            <tr>
-              <th>{ "Commit" }</th>
-              <th>{ "Author" }</th>
-              <th>{ "Timestamp" }</th>
-              <th>{ "Subject" }</th>
-              <th>{ "Throughput" }</th>
-            </tr>
-            { for self.view_commit_table_entries() }
+            <table class="loupe-commits-table">
+            <thead>
+              <tr>
+                <th>{ "Commit" }</th>
+                <th>{ "Timestamp" }</th>
+                <th>{ "Subject" }</th>
+                <th>{ &self.props.value_title }</th>
+              </tr>
+            </thead>
+            <tbody>
+              { for self.view_commit_table_entries() }
+            </tbody>
           </table>
         }
     }

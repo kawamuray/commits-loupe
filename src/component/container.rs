@@ -37,6 +37,7 @@ pub struct Properties {
     pub data_path: String,
     pub range: Range,
     pub file: String,
+    pub value_title: String,
     pub query: String,
 }
 
@@ -113,15 +114,15 @@ impl<C: Chart> Component for ContainerComponent<C> {
     fn view(&self) -> Html {
         let chart_props = chart::Properties {
             data: self.data.as_ref().map(Rc::clone),
-            query: self.props.query.clone(),
+            value_title: self.props.value_title.clone(),
         };
         let table_props = table::Properties {
+            value_title: self.props.value_title.clone(),
             data: self.data.as_ref().map(Rc::clone),
-            query: self.props.query.clone(),
         };
 
         html! {
-            <div>
+            <div class="loupe-container">
               <ChartComponent<C> with chart_props />
               <TableComponent with table_props />
             </div>

@@ -2,10 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Commits Loupe</title>
+    <title>Commits Loupe Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.3/build/pure-min.css"
+          integrity="sha384-cg6SkqEOCV1NbJoCu11+bm0NvBRc8IYLRGXkmNrqUBfTjmMYwNKPWBTIKyw9mHNJ"
+          crossorigin="anonymous">
+    <style>
+      .loupe-commits-table {
+          overflow: auto;
+          width: 100%;
+          font-size: 10px;
+          height: 200px;
+          display: block;
+      }
+      .loupe-ctl-container {
+          text-align: center;
+      }
+    </style>
   </head>
   <body>
-    <script src="/commits-loupe.js"></script>
+    <h1>Commits Loupe Demo</h1>
     <div id="screen"></div>
+    <script src="/commits-loupe.js"></script>
+    <script>
+      function cssModify() {
+          console.log("cssModify!");
+          document.querySelectorAll(".loupe-panels").forEach(function(e) {
+              e.classList.add("pure-g");
+              e.querySelectorAll(".loupe-container").forEach(function(e) {
+                  e.classList.add("pure-u-1-3");
+              });
+          });
+          document.querySelectorAll(".loupe-button").forEach(function(e) {
+              e.classList.add("pure-button");
+          });
+          document.querySelectorAll(".loupe-commits-table").forEach(function(e) {
+              e.classList.add("pure-table");
+              e.classList.add("pure-table-striped");
+          });
+      }
+
+      const observer = new MutationObserver(function(mList, ob) { cssModify(); });
+      observer.observe(document.getElementById("screen"), {
+          attributes: true,
+          childList: true,
+          subTree: true
+      });
+    </script>
   </body>
 </html>

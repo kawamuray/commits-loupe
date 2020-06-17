@@ -1,4 +1,7 @@
+use chrono::{DateTime, Local};
 use std::time::SystemTime;
+
+const SHORT_SHA_LEN: usize = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitInfo {
@@ -9,6 +12,18 @@ pub struct CommitInfo {
     pub commit_date: SystemTime,
     pub message: String,
     pub view_url: String,
+}
+
+impl CommitInfo {
+    pub fn sha_short(&self) -> &str {
+        &self.sha[..SHORT_SHA_LEN]
+    }
+
+    pub fn author_date_str(&self) -> String {
+        DateTime::<Local>::from(self.author_date)
+            .format("%Y-%m-%dT%H:%M")
+            .to_string()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -29,7 +29,7 @@ impl chart::Chart for ChartJs {
         let mut datapoints = Vec::with_capacity(commits.len());
         for commit in commits.iter().rev() {
             link_urls.push(commit.view_url.clone());
-            labels.push(&commit.sha);
+            labels.push(commit.sha_short());
             let value = data.metadata.get(&commit.sha).expect("missing meta value");
             datapoints.push(*value);
         }

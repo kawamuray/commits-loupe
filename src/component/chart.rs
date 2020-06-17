@@ -16,7 +16,7 @@ pub struct ChartComponent<C: Chart + 'static> {
 #[derive(Debug, Clone, Properties)]
 pub struct Properties {
     pub data: Option<Rc<CommitViewData>>,
-    pub query: String,
+    pub value_title: String,
 }
 
 impl<C: Chart> ChartComponent<C> {
@@ -41,7 +41,7 @@ impl<C: Chart> ChartComponent<C> {
         let chart = C::create(
             target,
             &chart::Config {
-                title: "Throughput".to_string(),
+                title: self.props.value_title.clone(),
             },
             data,
         );
@@ -72,7 +72,7 @@ impl<C: Chart> Component for ChartComponent<C> {
 
     fn view(&self) -> Html {
         html! {
-            <canvas ref=self.canvas_ref.clone() width="200" height="200"></canvas>
+            <canvas ref=self.canvas_ref.clone() width="400" height="200"></canvas>
         }
     }
 

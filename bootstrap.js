@@ -19,6 +19,11 @@ import("./pkg").then(cloupe => {
                 title: "10ms latency / Throughput",
                 file: "tasks_10k_latency_10ms_concurrency_20-benchmark.json",
                 query: "performance.throughput",
+            },
+            {
+                title: "10ms latency / Execution Time",
+                file: "tasks_10k_latency_10ms_concurrency_20-benchmark.json",
+                query: "performance.executionTime",
             }
         ],
     });

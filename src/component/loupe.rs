@@ -37,6 +37,7 @@ impl<C: Chart> LoupeComponent<C> {
                 data_path: cfg.data_url.clone(),
                 range: self.range.clone(),
                 file: data.file.clone(),
+                value_title: data.title.clone(),
                 query: data.query.clone(),
             };
             htmls.push(html! {
@@ -83,10 +84,14 @@ impl<C: Chart> Component for LoupeComponent<C> {
 
     fn view(&self) -> Html {
         html! {
-            <div>
-                <button type="button" onclick=self.link.callback(|_| Msg::ZoomIn)>{ "+ Zoom In" }</button>
-                <button type="button" onclick=self.link.callback(|_| Msg::ZoomOut)>{ "- Zoom Out" }</button>
-              <div class="panels">
+            <div class="loupe-root">
+              <div class="loupe-ctl-container">
+                <button type="button" class="loupe-button loupe-ctl-zoom-in"
+                        onclick=self.link.callback(|_| Msg::ZoomIn)>{ "+ Zoom In" }</button>
+                <button type="button" class="loupe-button loupe-ctl-zoom-out"
+                        onclick=self.link.callback(|_| Msg::ZoomOut)>{ "- Zoom Out" }</button>
+              </div>
+              <div class="loupe-panels">
                 { for self.view_containers() }
               </div>
             </div>
