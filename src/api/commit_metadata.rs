@@ -28,7 +28,7 @@ impl CommitMetadataApi {
 }
 
 impl MetadataApi for CommitMetadataApi {
-    fn commit_metadata<F>(&mut self, commit: &str, file: &str, callback: F) -> FetchTask
+    fn commit_metadata<F>(&mut self, commit: &str, file: &str, callback: F) -> Option<FetchTask>
     where
         F: FnOnce(Result<String, Error>) + 'static,
     {
@@ -36,26 +36,28 @@ impl MetadataApi for CommitMetadataApi {
         let request = Request::get(&url)
             .body(Nothing)
             .expect("build request error");
-        self.service
-            .fetch(
-                request,
-                Callback::once(move |resp: Response<Result<String, anyhow::Error>>| {
-                    let (meta, data) = resp.into_parts();
-                    debug!(
-                        "Received response for commit metadata: meta={:?}, data={:?}",
-                        meta, data
-                    );
-                    if meta.status.is_success() {
-                        match data {
-                            Ok(d) => callback(Ok(d)),
-                            Err(e) => callback(Err(Error::Fetch(e))),
+        Some(
+            self.service
+                .fetch(
+                    request,
+                    Callback::once(move |resp: Response<Result<String, anyhow::Error>>| {
+                        let (meta, data) = resp.into_parts();
+                        debug!(
+                            "Received response for commit metadata: meta={:?}, data={:?}",
+                            meta, data
+                        );
+                        if meta.status.is_success() {
+                            match data {
+                                Ok(d) => callback(Ok(d)),
+                                Err(e) => callback(Err(Error::Fetch(e.to_string()))),
+                            }
+                        } else {
+                            error!("Failed to get commit metadata: {:?}", meta.status);
+                            callback(Err(Error::Http(meta.status)));
                         }
-                    } else {
-                        error!("Failed to get commit metadata: {:?}", meta.status);
-                        callback(Err(Error::Http(meta.status)));
-                    }
-                }),
-            )
-            .unwrap()
+                    }),
+                )
+                .unwrap(),
+        )
     }
 }

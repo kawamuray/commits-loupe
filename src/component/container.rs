@@ -2,23 +2,28 @@ use super::chart::{self, ChartComponent};
 use super::CommitViewData;
 use crate::api::commit_metadata::CommitMetadataApi;
 use crate::api::github::GitHubApi;
+use crate::api::{CommitsApi, MetadataApi};
+use crate::cache::{ApiCache, CommitsApiKey};
 use crate::chart::Chart;
 use crate::component::table::{self, TableComponent};
 use crate::dataset::CommitDataSet;
 use crate::query::Query;
 use crate::range::Range;
 use log::*;
+use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use yew::prelude::*;
 
 /// A container component to contain single unit of view
-pub struct ContainerComponent<C>
+pub struct ContainerComponent<C, A, M>
 where
     C: Chart + 'static,
+    A: CommitsApi + 'static,
+    M: MetadataApi + 'static,
 {
     link: ComponentLink<Self>,
-    props: Properties,
+    props: Properties<A, M>,
     data: Option<Rc<CommitViewData>>,
     phantom: PhantomData<C>,
 }
@@ -31,17 +36,45 @@ pub enum Msg {
     DataFetchError(anyhow::Error),
 }
 
-#[derive(Debug, Clone, Properties)]
-pub struct Properties {
+#[derive(Debug, Properties)]
+pub struct Apis<A: CommitsApi, M: MetadataApi> {
+    pub commits: Rc<RefCell<A>>,
+    pub metadata: Rc<RefCell<M>>,
+}
+
+impl<A: CommitsApi, M: MetadataApi> Clone for Apis<A, M> {
+    fn clone(&self) -> Self {
+        Self {
+            commits: Rc::clone(&self.commits),
+            metadata: Rc::clone(&self.metadata),
+        }
+    }
+}
+
+#[derive(Debug, Properties)]
+pub struct Properties<A: CommitsApi, M: MetadataApi> {
     pub repo: String,
-    pub data_path: String,
     pub range: Range,
     pub file: String,
     pub value_title: String,
     pub query: String,
+    pub apis: Apis<A, M>,
 }
 
-impl<C: Chart> ContainerComponent<C> {
+impl<A: CommitsApi, M: MetadataApi> Clone for Properties<A, M> {
+    fn clone(&self) -> Self {
+        Self {
+            repo: self.repo.clone(),
+            range: self.range.clone(),
+            file: self.file.clone(),
+            value_title: self.value_title.clone(),
+            query: self.query.clone(),
+            apis: self.apis.clone(),
+        }
+    }
+}
+
+impl<C: Chart, A: CommitsApi, M: MetadataApi> ContainerComponent<C, A, M> {
     fn fetch_view_data(&self) {
         let cb = self.link.callback(|resp| match resp {
             Ok(dataset) => Msg::DataReady(dataset),
@@ -49,8 +82,8 @@ impl<C: Chart> ContainerComponent<C> {
         });
 
         CommitDataSet::collect_range(
-            GitHubApi::new(),
-            CommitMetadataApi::new(self.props.data_path.clone()),
+            Rc::clone(&self.props.apis.commits),
+            Rc::clone(&self.props.apis.metadata),
             &self.props.repo,
             &self.props.file,
             self.props.range.clone(),
@@ -59,9 +92,11 @@ impl<C: Chart> ContainerComponent<C> {
     }
 }
 
-impl<C: Chart> Component for ContainerComponent<C> {
+impl<C: Chart, A: CommitsApi + 'static, M: MetadataApi + 'static> Component
+    for ContainerComponent<C, A, M>
+{
     type Message = Msg;
-    type Properties = Properties;
+    type Properties = Properties<A, M>;
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let this = Self {

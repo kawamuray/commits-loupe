@@ -18,8 +18,8 @@ pub struct CommitDataSet {
 
 impl CommitDataSet {
     pub fn collect_range<A, M, C>(
-        mut commits_api: A,
-        mut meta_api: M,
+        commits_api: Rc<RefCell<A>>,
+        meta_api: Rc<RefCell<M>>,
         repo: &str,
         file: &str,
         range: Range,
@@ -76,17 +76,21 @@ impl CommitDataSet {
             for c in commit_ids {
                 let sg = Rc::clone(&meta_sg);
                 let sha = c.clone();
-                let task = meta_api.commit_metadata(&c, &file, move |resp| {
-                    sg.recv(sha, resp);
-                });
-                meta_sg.in_flight(c, task);
+                let task = meta_api
+                    .borrow_mut()
+                    .commit_metadata(&c, &file, move |resp| {
+                        sg.recv(sha, resp);
+                    });
+                if let Some(task) = task {
+                    meta_sg.in_flight(c, task);
+                }
             }
             meta_sg.try_complete();
         }));
 
         for i in 1..=pages {
             let sg = Rc::clone(&commits_sg);
-            let task = commits_api.commits(
+            let task = commits_api.borrow_mut().commits(
                 repo,
                 from.as_ref().map(|s| s.as_ref()),
                 i,
@@ -95,7 +99,9 @@ impl CommitDataSet {
                     sg.recv(i, resp);
                 },
             );
-            commits_sg.in_flight(i, task);
+            if let Some(task) = task {
+                commits_sg.in_flight(i, task);
+            }
         }
         commits_sg.try_complete();
     }

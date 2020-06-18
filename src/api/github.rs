@@ -41,7 +41,7 @@ impl CommitsApi for GitHubApi {
         page: u32,
         count: u32,
         callback: F,
-    ) -> FetchTask
+    ) -> Option<FetchTask>
     where
         F: FnOnce(Result<Vec<CommitInfo>, Error>) + 'static,
     {
@@ -49,29 +49,31 @@ impl CommitsApi for GitHubApi {
         let request = Request::get(url.as_str())
             .body(Nothing)
             .expect("build request error");
-        self.service
-            .fetch(
-                request,
-                Callback::once(
-                    move |resp: Response<Json<Result<Vec<CommitData>, anyhow::Error>>>| {
-                        let (meta, Json(data)) = resp.into_parts();
-                        debug!(
-                            "Received response for commit list: meta={:?}, data={:?}",
-                            meta, data
-                        );
-                        if meta.status.is_success() {
-                            match data {
-                                Ok(d) => callback(Ok(d.into_iter().map(Into::into).collect())),
-                                Err(e) => callback(Err(Error::Fetch(e))),
+        Some(
+            self.service
+                .fetch(
+                    request,
+                    Callback::once(
+                        move |resp: Response<Json<Result<Vec<CommitData>, anyhow::Error>>>| {
+                            let (meta, Json(data)) = resp.into_parts();
+                            debug!(
+                                "Received response for commit list: meta={:?}, data={:?}",
+                                meta, data
+                            );
+                            if meta.status.is_success() {
+                                match data {
+                                    Ok(d) => callback(Ok(d.into_iter().map(Into::into).collect())),
+                                    Err(e) => callback(Err(Error::Fetch(e.to_string()))),
+                                }
+                            } else {
+                                error!("Failed to get commits list: {:?}", meta.status);
+                                callback(Err(Error::Http(meta.status)));
                             }
-                        } else {
-                            error!("Failed to get commits list: {:?}", meta.status);
-                            callback(Err(Error::Http(meta.status)));
-                        }
-                    },
-                ),
-            )
-            .unwrap()
+                        },
+                    ),
+                )
+                .unwrap(),
+        )
     }
 }
 
