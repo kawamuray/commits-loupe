@@ -7,13 +7,15 @@ use std::hash::Hash;
 use std::rc::Rc;
 use yew::services::fetch::FetchTask;
 
+type Cache<K, R> = Rc<RefCell<HashMap<K, RequestState<Result<R, api::Error>>>>>;
+
 pub struct ApiCache<K, R, A>
 where
     K: Hash + Eq + Debug,
     R: Clone,
     A: Api<K, R>,
 {
-    cache: Rc<RefCell<HashMap<K, RequestState<Result<R, api::Error>>>>>,
+    cache: Cache<K, R>,
     api: A,
 }
 

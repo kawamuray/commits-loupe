@@ -1,4 +1,3 @@
-use jmespatch;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -20,8 +19,7 @@ impl Query {
     }
 
     pub fn extract_value(&self, json: &str) -> Result<Option<f64>, Error> {
-        let var =
-            jmespatch::Variable::from_json(&json).map_err(|e| Error::MalformedJsonError(e))?;
+        let var = jmespatch::Variable::from_json(&json).map_err(Error::MalformedJsonError)?;
         Ok(self.expr.search(var)?.as_number())
     }
 }

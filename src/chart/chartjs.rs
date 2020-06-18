@@ -60,7 +60,7 @@ impl chart::Chart for ChartJs {
                                         &JsValue::from_str("data"),
                                         &datapoints
                                             .into_iter()
-                                            .map(|v| JsValue::from_f64(v))
+                                            .map(JsValue::from_f64)
                                             .collect::<Array>(),
                                     ),
                             )

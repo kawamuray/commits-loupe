@@ -12,6 +12,9 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use yew::prelude::*;
 
+type CachedCommitsApi = ApiCache<CommitListRequest, Vec<CommitInfo>, GitHubApi>;
+type CachedMetadataApi = ApiCache<CommitMetadataRequest, String, StaticMetadataApi>;
+
 /// The main component
 pub struct LoupeComponent<C>
 where
@@ -20,10 +23,7 @@ where
     link: ComponentLink<Self>,
     props: Properties,
     range: Range,
-    apis: container::Apis<
-        ApiCache<CommitListRequest, Vec<CommitInfo>, GitHubApi>,
-        ApiCache<CommitMetadataRequest, String, StaticMetadataApi>,
-    >,
+    apis: container::Apis<CachedCommitsApi, CachedMetadataApi>,
     phantom: PhantomData<C>,
 }
 

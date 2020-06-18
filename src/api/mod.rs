@@ -1,7 +1,6 @@
 pub mod github;
 pub mod static_metadata;
 
-use anyhow;
 use http::status::StatusCode;
 use std::fmt::Debug;
 use thiserror::Error;

@@ -1,6 +1,5 @@
 use super::*;
 use crate::commit::CommitInfo;
-use anyhow;
 use log::*;
 use schema::*;
 use url::Url;

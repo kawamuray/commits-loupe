@@ -19,7 +19,7 @@ impl CommitViewData {
         let mut meta_vals = HashMap::new();
         for c in &ds.commits {
             let meta_val = if let Some(json) = ds.metadata.get(&c.sha) {
-                query.extract_value(json)?.unwrap_or(f64::default())
+                query.extract_value(json)?.unwrap_or_default()
             } else {
                 f64::default()
             };
