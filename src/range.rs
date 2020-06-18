@@ -18,14 +18,16 @@ impl Range {
     }
 
     pub fn pages_for_batch(&self, batch_size: u32) -> u32 {
-        (batch_size / self.count) + 1
+        (self.count as f64 / batch_size as f64).ceil() as u32
     }
 
     pub fn sample(&self, candidates: Vec<CommitInfo>) -> Vec<CommitInfo> {
         let sample_index = (self.count / self.samples).max(1);
         debug!(
             "Sampleing {} from {} with sample_index={}",
-            self.samples, self.count, sample_index
+            self.samples,
+            candidates.len(),
+            sample_index
         );
         let mut samples = Vec::with_capacity(self.samples as usize);
         for (i, commit) in candidates.into_iter().enumerate() {
