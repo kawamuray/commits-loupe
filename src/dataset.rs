@@ -1,9 +1,10 @@
-use crate::api::{self, CommitsApi, MetadataApi};
+use crate::api::{self, Api, CommitListRequest, CommitMetadataRequest};
 use crate::commit::CommitInfo;
 use crate::range::Range;
 use log::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::rc::Rc;
 use yew::services::fetch::FetchTask;
@@ -25,8 +26,8 @@ impl CommitDataSet {
         range: Range,
         callback: C,
     ) where
-        A: CommitsApi,
-        M: MetadataApi + 'static,
+        A: Api<CommitListRequest, Vec<CommitInfo>>,
+        M: Api<CommitMetadataRequest, String> + 'static,
         C: FnOnce(Result<Self, api::Error>) + 'static,
     {
         let pages = range.pages_for_batch(COMMITS_PAGE_SIZE);
@@ -76,13 +77,22 @@ impl CommitDataSet {
             for c in commit_ids {
                 let sg = Rc::clone(&meta_sg);
                 let sha = c.clone();
-                let task = meta_api
-                    .borrow_mut()
-                    .commit_metadata(&c, &file, move |resp| {
+                let ret = meta_api.borrow_mut().call(
+                    &CommitMetadataRequest {
+                        commit: c.clone(),
+                        file: file.to_owned(),
+                    },
+                    move |resp| {
                         sg.recv(sha, resp);
-                    });
-                if let Some(task) = task {
-                    meta_sg.in_flight(c, task);
+                    },
+                );
+                match ret {
+                    Ok(task) => {
+                        if let Some(task) = task {
+                            meta_sg.in_flight(c, task);
+                        }
+                    }
+                    Err(e) => error!("Failed to call API for commit metadata: {:?}", e),
                 }
             }
             meta_sg.try_complete();
@@ -90,17 +100,24 @@ impl CommitDataSet {
 
         for i in 1..=pages {
             let sg = Rc::clone(&commits_sg);
-            let task = commits_api.borrow_mut().commits(
-                repo,
-                from.as_ref().map(|s| s.as_ref()),
-                i,
-                COMMITS_PAGE_SIZE,
+            let ret = commits_api.borrow_mut().call(
+                &CommitListRequest {
+                    repo: repo.to_owned(),
+                    from: from.as_ref().map(|s| s.to_owned()),
+                    page: i,
+                    count: COMMITS_PAGE_SIZE,
+                },
                 move |resp| {
                     sg.recv(i, resp);
                 },
             );
-            if let Some(task) = task {
-                commits_sg.in_flight(i, task);
+            match ret {
+                Ok(task) => {
+                    if let Some(task) = task {
+                        commits_sg.in_flight(i, task);
+                    }
+                }
+                Err(e) => error!("Failed to call API for commits listing: {:?}", e),
             }
         }
         commits_sg.try_complete();

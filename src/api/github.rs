@@ -1,4 +1,4 @@
-use crate::api::{CommitsApi, Error};
+use super::*;
 use crate::commit::CommitInfo;
 use anyhow;
 use log::*;
@@ -33,47 +33,45 @@ impl GitHubApi {
     }
 }
 
-impl CommitsApi for GitHubApi {
-    fn commits<F>(
+impl Api<CommitListRequest, Vec<CommitInfo>> for GitHubApi {
+    fn call<F>(
         &mut self,
-        repo: &str,
-        from: Option<&str>,
-        page: u32,
-        count: u32,
+        req: &CommitListRequest,
         callback: F,
-    ) -> Option<FetchTask>
+    ) -> Result<Option<FetchTask>, anyhow::Error>
     where
         F: FnOnce(Result<Vec<CommitInfo>, Error>) + 'static,
     {
-        let url = Self::build_commits_url(repo, from, page, count);
+        let url = Self::build_commits_url(
+            req.repo.as_ref(),
+            req.from.as_ref().map(|s| s.as_ref()),
+            req.page,
+            req.count,
+        );
         let request = Request::get(url.as_str())
             .body(Nothing)
             .expect("build request error");
-        Some(
-            self.service
-                .fetch(
-                    request,
-                    Callback::once(
-                        move |resp: Response<Json<Result<Vec<CommitData>, anyhow::Error>>>| {
-                            let (meta, Json(data)) = resp.into_parts();
-                            debug!(
-                                "Received response for commit list: meta={:?}, data={:?}",
-                                meta, data
-                            );
-                            if meta.status.is_success() {
-                                match data {
-                                    Ok(d) => callback(Ok(d.into_iter().map(Into::into).collect())),
-                                    Err(e) => callback(Err(Error::Fetch(e.to_string()))),
-                                }
-                            } else {
-                                error!("Failed to get commits list: {:?}", meta.status);
-                                callback(Err(Error::Http(meta.status)));
-                            }
-                        },
-                    ),
-                )
-                .unwrap(),
-        )
+        Ok(Some(self.service.fetch(
+            request,
+            Callback::once(
+                move |resp: Response<Json<Result<Vec<CommitData>, anyhow::Error>>>| {
+                    let (meta, Json(data)) = resp.into_parts();
+                    debug!(
+                        "Received response for commit list: meta={:?}, data={:?}",
+                        meta, data
+                    );
+                    if meta.status.is_success() {
+                        match data {
+                            Ok(d) => callback(Ok(d.into_iter().map(Into::into).collect())),
+                            Err(e) => callback(Err(Error::Fetch(e.to_string()))),
+                        }
+                    } else {
+                        error!("Failed to get commits list: {:?}", meta.status);
+                        callback(Err(Error::Http(meta.status)));
+                    }
+                },
+            ),
+        )?))
     }
 }
 

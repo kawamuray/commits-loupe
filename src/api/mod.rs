@@ -1,7 +1,6 @@
-pub mod commit_metadata;
 pub mod github;
+pub mod static_metadata;
 
-use crate::commit::CommitInfo;
 use anyhow;
 use http::status::StatusCode;
 use std::fmt::Debug;
@@ -16,21 +15,22 @@ pub enum Error {
     Http(StatusCode),
 }
 
-pub trait CommitsApi {
-    fn commits<F>(
-        &mut self,
-        repo: &str,
-        from: Option<&str>,
-        page: u32,
-        count: u32,
-        callback: F,
-    ) -> Option<FetchTask>
+pub trait Api<Req: Debug, Res> {
+    fn call<F>(&mut self, req: &Req, callback: F) -> Result<Option<FetchTask>, anyhow::Error>
     where
-        F: FnOnce(Result<Vec<CommitInfo>, Error>) + 'static;
+        F: FnOnce(Result<Res, Error>) + 'static;
 }
 
-pub trait MetadataApi {
-    fn commit_metadata<F>(&mut self, commit: &str, file: &str, callback: F) -> Option<FetchTask>
-    where
-        F: FnOnce(Result<String, Error>) + 'static;
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CommitListRequest {
+    pub repo: String,
+    pub from: Option<String>,
+    pub page: u32,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CommitMetadataRequest {
+    pub commit: String,
+    pub file: String,
 }

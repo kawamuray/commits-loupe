@@ -1,10 +1,8 @@
 use super::chart::{self, ChartComponent};
 use super::CommitViewData;
-use crate::api::commit_metadata::CommitMetadataApi;
-use crate::api::github::GitHubApi;
-use crate::api::{CommitsApi, MetadataApi};
-use crate::cache::{ApiCache, CommitsApiKey};
+use crate::api::{Api, CommitListRequest, CommitMetadataRequest};
 use crate::chart::Chart;
+use crate::commit::CommitInfo;
 use crate::component::table::{self, TableComponent};
 use crate::dataset::CommitDataSet;
 use crate::query::Query;
@@ -19,8 +17,8 @@ use yew::prelude::*;
 pub struct ContainerComponent<C, A, M>
 where
     C: Chart + 'static,
-    A: CommitsApi + 'static,
-    M: MetadataApi + 'static,
+    A: Api<CommitListRequest, Vec<CommitInfo>> + 'static,
+    M: Api<CommitMetadataRequest, String> + 'static,
 {
     link: ComponentLink<Self>,
     props: Properties<A, M>,
@@ -37,12 +35,14 @@ pub enum Msg {
 }
 
 #[derive(Debug, Properties)]
-pub struct Apis<A: CommitsApi, M: MetadataApi> {
+pub struct Apis<A: Api<CommitListRequest, Vec<CommitInfo>>, M: Api<CommitMetadataRequest, String>> {
     pub commits: Rc<RefCell<A>>,
     pub metadata: Rc<RefCell<M>>,
 }
 
-impl<A: CommitsApi, M: MetadataApi> Clone for Apis<A, M> {
+impl<A: Api<CommitListRequest, Vec<CommitInfo>>, M: Api<CommitMetadataRequest, String>> Clone
+    for Apis<A, M>
+{
     fn clone(&self) -> Self {
         Self {
             commits: Rc::clone(&self.commits),
@@ -52,7 +52,10 @@ impl<A: CommitsApi, M: MetadataApi> Clone for Apis<A, M> {
 }
 
 #[derive(Debug, Properties)]
-pub struct Properties<A: CommitsApi, M: MetadataApi> {
+pub struct Properties<
+    A: Api<CommitListRequest, Vec<CommitInfo>>,
+    M: Api<CommitMetadataRequest, String>,
+> {
     pub repo: String,
     pub range: Range,
     pub file: String,
@@ -61,7 +64,9 @@ pub struct Properties<A: CommitsApi, M: MetadataApi> {
     pub apis: Apis<A, M>,
 }
 
-impl<A: CommitsApi, M: MetadataApi> Clone for Properties<A, M> {
+impl<A: Api<CommitListRequest, Vec<CommitInfo>>, M: Api<CommitMetadataRequest, String>> Clone
+    for Properties<A, M>
+{
     fn clone(&self) -> Self {
         Self {
             repo: self.repo.clone(),
@@ -74,7 +79,12 @@ impl<A: CommitsApi, M: MetadataApi> Clone for Properties<A, M> {
     }
 }
 
-impl<C: Chart, A: CommitsApi, M: MetadataApi> ContainerComponent<C, A, M> {
+impl<
+        C: Chart,
+        A: Api<CommitListRequest, Vec<CommitInfo>>,
+        M: Api<CommitMetadataRequest, String>,
+    > ContainerComponent<C, A, M>
+{
     fn fetch_view_data(&self) {
         let cb = self.link.callback(|resp| match resp {
             Ok(dataset) => Msg::DataReady(dataset),
@@ -92,8 +102,11 @@ impl<C: Chart, A: CommitsApi, M: MetadataApi> ContainerComponent<C, A, M> {
     }
 }
 
-impl<C: Chart, A: CommitsApi + 'static, M: MetadataApi + 'static> Component
-    for ContainerComponent<C, A, M>
+impl<
+        C: Chart,
+        A: Api<CommitListRequest, Vec<CommitInfo>> + 'static,
+        M: Api<CommitMetadataRequest, String> + 'static,
+    > Component for ContainerComponent<C, A, M>
 {
     type Message = Msg;
     type Properties = Properties<A, M>;
