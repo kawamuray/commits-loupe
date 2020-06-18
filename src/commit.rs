@@ -21,7 +21,7 @@ impl CommitInfo {
 
     pub fn author_date_str(&self) -> String {
         DateTime::<Local>::from(self.author_date)
-            .format("%Y-%m-%dT%H:%M")
+            .format("%Y-%m-%d %H:%M")
             .to_string()
     }
 }
