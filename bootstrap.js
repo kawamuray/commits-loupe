@@ -4,7 +4,7 @@ import("./pkg").then(cloupe => {
         on: "#screen",
         repo: "kawamuray/decaton",
         branch: "bmt-revise",
-        data_url: "commit-data/",
+        data_url: "https://kawamuray.github.io/decaton/commit-data",
         components: {
             show_table: false,
             show_range: false,

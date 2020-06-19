@@ -6,24 +6,19 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 pub struct StaticMetadataApi {
     service: FetchService,
-    data_path: String,
+    data_url: String,
 }
 
 impl StaticMetadataApi {
-    pub fn new(data_path: String) -> Self {
+    pub fn new(data_url: String) -> Self {
         Self {
             service: FetchService::new(),
-            data_path,
+            data_url,
         }
     }
 
     fn build_url(&self, commit: &str, file: &str) -> String {
-        // TODO: think what to do for this
-        format!(
-            "https://kawamuray.github.io/decaton/{}/{}/{}",
-            self.data_path, commit, file
-        )
-        // format!("/decaton/{}/{}/{}", self.data_path, commit, file)
+        format!("{}/{}/{}", self.data_url, commit, file)
     }
 }
 
