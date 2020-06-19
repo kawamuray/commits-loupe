@@ -69,10 +69,15 @@ where
             }),
         )?;
         if let Some(task) = task {
-            self.cache.borrow_mut().insert(
-                key.clone(),
-                RequestState::InFlight(task, vec![Box::new(callback)]),
-            );
+            let mut cache = self.cache.borrow_mut();
+            // The above API call might completes synchronously and the response already
+            // resides in cache.
+            if !cache.contains_key(&key) {
+                cache.insert(
+                    key.clone(),
+                    RequestState::InFlight(task, vec![Box::new(callback)]),
+                );
+            }
         }
         Ok(())
     }

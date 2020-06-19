@@ -241,7 +241,9 @@ where
     }
 
     pub fn in_flight(&self, key: K, task: FetchTask) {
-        self.update_state(key, CollectState::FetchInFlight(task));
+        if let Some(CollectState::Vacant) = self.states.borrow().get(&key) {
+            self.update_state(key, CollectState::FetchInFlight(task));
+        }
     }
 
     pub fn recv(self: Rc<Self>, key: K, value: V) {
