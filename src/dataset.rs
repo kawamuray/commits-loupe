@@ -1,6 +1,7 @@
 use crate::api::{self, Api, CommitListRequest, CommitMetadataRequest};
 use crate::commit::CommitInfo;
 use crate::range::Range;
+use http::StatusCode;
 use log::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -35,67 +36,7 @@ impl CommitDataSet {
         let file = file.to_owned();
 
         let commits_sg = Rc::new(SyncGroup::new((1..=pages).collect(), move |resp| {
-            let mut commits = Vec::new();
-
-            // First flatten all commits into linear vector
-            let mut kvs: Vec<_> = resp.into_iter().collect();
-            kvs.sort_by_key(|(i, _)| *i);
-            for (_, batch) in kvs {
-                match batch {
-                    Ok(batch) => {
-                        commits.extend(batch);
-                    }
-                    Err(e) => {
-                        // If any of API call for commits API fails,
-                        // fail it entirely.
-                        callback(Err(e));
-                        return;
-                    }
-                }
-            }
-
-            // Select sampled element from it
-            let commits = range.sample(commits);
-            let commit_ids: Vec<_> = commits.iter().map(|c| c.sha.clone()).collect();
-
-            // For each commit issue metadata fetch
-            let meta_sg = Rc::new(SyncGroup::new(
-                commits.iter().map(|c| c.sha.clone()).collect(),
-                move |resp| {
-                    let mut metadata = HashMap::new();
-                    for (sha, data) in resp.into_iter() {
-                        match data {
-                            Ok(data) => {
-                                metadata.insert(sha, data);
-                            }
-                            Err(e) => info!("Could not obtain metadata for commit {}: {}", sha, e),
-                        }
-                    }
-                    callback(Ok(Self { commits, metadata }));
-                },
-            ));
-            for c in commit_ids {
-                let sg = Rc::clone(&meta_sg);
-                let sha = c.clone();
-                let ret = meta_api.borrow_mut().call(
-                    &CommitMetadataRequest {
-                        commit: c.clone(),
-                        file: file.to_owned(),
-                    },
-                    move |resp| {
-                        sg.recv(sha, resp);
-                    },
-                );
-                match ret {
-                    Ok(task) => {
-                        if let Some(task) = task {
-                            meta_sg.in_flight(c, task);
-                        }
-                    }
-                    Err(e) => error!("Failed to call API for commit metadata: {:?}", e),
-                }
-            }
-            meta_sg.try_complete();
+            Self::handle_completed_commits_fetch(file, range, meta_api, callback, resp);
         }));
 
         for i in 1..=pages {
@@ -121,6 +62,114 @@ impl CommitDataSet {
             }
         }
         commits_sg.try_complete();
+    }
+
+    fn handle_completed_commits_fetch<M, C>(
+        file: String,
+        range: Range,
+        meta_api: Rc<RefCell<M>>,
+        callback: C,
+        resp: HashMap<u32, Result<Vec<CommitInfo>, api::Error>>,
+    ) where
+        M: Api<CommitMetadataRequest, String> + 'static,
+        C: FnOnce(Result<Self, api::Error>) + 'static,
+    {
+        let mut commits = Vec::new();
+
+        // First flatten all commits into linear vector
+        let mut kvs: Vec<_> = resp.into_iter().collect();
+        kvs.sort_by_key(|(i, _)| *i);
+        for (_, batch) in kvs {
+            match batch {
+                Ok(batch) => {
+                    commits.extend(batch);
+                }
+                Err(e) => {
+                    // If any of API call for commits API fails,
+                    // fail it entirely.
+                    callback(Err(e));
+                    return;
+                }
+            }
+        }
+
+        // Select sampled element from it
+        let commits = range.sample(commits);
+
+        // For each commit issue metadata fetch
+        Self::request_commits_metadata(file, meta_api, callback, commits);
+    }
+
+    fn request_commits_metadata<M, C>(
+        file: String,
+        meta_api: Rc<RefCell<M>>,
+        callback: C,
+        commits: Vec<CommitInfo>,
+    ) where
+        M: Api<CommitMetadataRequest, String> + 'static,
+        C: FnOnce(Result<Self, api::Error>) + 'static,
+    {
+        let commit_ids: Vec<_> = commits.iter().map(|c| c.sha.clone()).collect();
+
+        let meta_sg = Rc::new(SyncGroup::new(
+            commits.iter().map(|c| c.sha.clone()).collect(),
+            move |resp| {
+                Self::handle_completed_metadata_fetch(callback, commits, resp);
+            },
+        ));
+        for c in commit_ids {
+            let sg = Rc::clone(&meta_sg);
+            let sha = c.clone();
+            let ret = meta_api.borrow_mut().call(
+                &CommitMetadataRequest {
+                    commit: c.clone(),
+                    file: file.to_owned(),
+                },
+                move |resp| {
+                    sg.recv(sha, resp);
+                },
+            );
+            match ret {
+                Ok(task) => {
+                    if let Some(task) = task {
+                        meta_sg.in_flight(c, task);
+                    }
+                }
+                Err(e) => error!("Failed to call API for commit metadata: {:?}", e),
+            }
+        }
+        meta_sg.try_complete();
+    }
+
+    fn handle_completed_metadata_fetch<C>(
+        callback: C,
+        commits: Vec<CommitInfo>,
+        resp: HashMap<String, Result<String, api::Error>>,
+    ) where
+        C: FnOnce(Result<Self, api::Error>) + 'static,
+    {
+        let mut metadata = HashMap::new();
+        for (sha, data) in resp.into_iter() {
+            match data {
+                Ok(data) => {
+                    metadata.insert(sha, data);
+                }
+                Err(e) => {
+                    use api::Error::*;
+                    match e {
+                        Fetch(e) => error!("Failed to get commit metadata for {}: {:?}", sha, e),
+                        Http(status) => {
+                            if status == StatusCode::NOT_FOUND {
+                                debug!("Metadata file 404 not found: {}", sha);
+                            } else {
+                                error!("Failed to get commit metadata for {}: {:?}", sha, status);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        callback(Ok(Self { commits, metadata }));
     }
 }
 
