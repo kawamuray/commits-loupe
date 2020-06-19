@@ -65,7 +65,6 @@ impl Api<CommitListRequest, Vec<CommitInfo>> for GitHubApi {
                             Err(e) => callback(Err(Error::Fetch(e.to_string()))),
                         }
                     } else {
-                        error!("Failed to get commits list: {:?}", meta.status);
                         callback(Err(Error::Http(meta.status)));
                     }
                 },

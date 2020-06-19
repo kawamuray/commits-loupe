@@ -110,7 +110,6 @@ impl chart::Chart for ChartJs {
             )
             .unwrap(),
         );
-        info!("chart options = {:?}", options);
 
         let chart = Chart::new(target, Object::from_entries(&options).unwrap());
 

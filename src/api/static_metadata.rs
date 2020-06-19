@@ -49,7 +49,6 @@ impl Api<CommitMetadataRequest, String> for StaticMetadataApi {
                         Err(e) => callback(Err(Error::Fetch(e.to_string()))),
                     }
                 } else {
-                    error!("Failed to get commit metadata: {:?}", meta.status);
                     callback(Err(Error::Http(meta.status)));
                 }
             }),

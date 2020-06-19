@@ -36,7 +36,6 @@ where
     where
         F: FnOnce(Result<R, api::Error>) + 'static,
     {
-        debug!("CACHE BEGIN");
         if let Some(cached) = self.cache.borrow_mut().get_mut(key) {
             use RequestState::*;
             match cached {
@@ -47,11 +46,10 @@ where
                     callback(result.clone());
                 }
             }
-            debug!("Request for key {:?} served from cache", key);
+            debug!("API cache hit: {:?}", key);
             return Ok(());
         }
-
-        debug!("CACHE MISS, key = {:?}", key);
+        debug!("API cache miss: {:?}", key);
 
         let cache = Rc::clone(&self.cache);
         let key_cp = key.clone();
