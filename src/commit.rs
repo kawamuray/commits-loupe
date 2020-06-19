@@ -19,6 +19,10 @@ impl CommitInfo {
         &self.sha[..SHORT_SHA_LEN]
     }
 
+    pub fn message_headline(&self) -> &str {
+        self.message.split('\n').next().unwrap()
+    }
+
     pub fn author_date_str(&self) -> String {
         DateTime::<Local>::from(self.author_date)
             .format("%Y-%m-%d %H:%M")

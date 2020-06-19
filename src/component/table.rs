@@ -21,7 +21,7 @@ impl TableComponent {
           <tr>
             <th><a href=commit.view_url.clone()>{ commit.sha_short() }</a></th>
             <th>{ commit.author_date_str() }</th>
-            <th>{ &commit.message }</th>
+            <th>{ commit.message_headline() }</th>
             <th>{ format!("{:.2}", throughput) }</th>
           </tr>
         }
