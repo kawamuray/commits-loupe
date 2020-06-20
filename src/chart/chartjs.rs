@@ -5,6 +5,9 @@ use log::*;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
 
+const BORDER_COLOR: &'static str = "rgba(1,169,244,0.5)";
+const BACKGROUND_COLOR: &'static str = "rgba(1,169,244,0.2)";
+
 #[wasm_bindgen(module = "chart.js")]
 extern "C" {
     pub type Chart;
@@ -55,6 +58,14 @@ impl chart::Chart for ChartJs {
                                     .set(
                                         &JsValue::from_str("label"),
                                         &JsValue::from_str(&config.title),
+                                    )
+                                    .set(
+                                        &JsValue::from_str("backgroundColor"),
+                                        &JsValue::from_str(BACKGROUND_COLOR),
+                                    )
+                                    .set(
+                                        &JsValue::from_str("borderColor"),
+                                        &JsValue::from_str(BORDER_COLOR),
                                     )
                                     .set(
                                         &JsValue::from_str("data"),
