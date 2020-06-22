@@ -1,24 +1,4 @@
-use js_sys::{Array, Reflect};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use thiserror::Error;
-use wasm_bindgen::prelude::*;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("no valid property value for: {0}")]
-    NoPropertyValue(String),
-    #[error("invalid property value for {}: {:?}", key, value)]
-    InvalidPropertyValue { key: String, value: JsValue },
-    #[error("js error: {:?}", 0)]
-    JsError(JsValue),
-}
-
-impl From<JsValue> for Error {
-    fn from(v: JsValue) -> Self {
-        Error::JsError(v)
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {

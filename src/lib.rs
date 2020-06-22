@@ -1,5 +1,7 @@
 #![recursion_limit = "512"]
 
+#[macro_use]
+mod js_macros;
 mod api;
 mod cache;
 mod chart;

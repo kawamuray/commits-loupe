@@ -1,9 +1,8 @@
 use crate::chart;
 use crate::component::CommitViewData;
-use js_sys::{Array, Map, Object, Reflect};
+use js_sys::{Array, Object, Reflect};
 use log::*;
 use number_prefix::NumberPrefix;
-use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
@@ -21,15 +20,6 @@ extern "C" {
     #[wasm_bindgen(method)]
     pub fn destroy(this: &Chart);
 
-}
-
-/// Create an instance of JS `Closure<T>`, store it into vec, and return the reference to it.
-macro_rules! closure {
-    ($store:expr, $type:ty, $fn:expr) => {{
-        let closure = Closure::wrap(Box::new($fn) as Box<$type>);
-        $store.push(Box::new(closure) as Box<dyn Drop>);
-        unsafe { &**($store.last().unwrap() as *const Box<dyn Drop> as *const Box<Closure<$type>>) }
-    }};
 }
 
 pub struct ChartJs {
@@ -103,34 +93,36 @@ impl chart::Chart for ChartJs {
             }
         );
 
-        let config = Config {
-            r#type: "line",
-            data: DataConfig {
-                labels,
-                datasets: vec![DatasetConfig {
-                    backgroundColor: BACKGROUND_COLOR,
-                    borderColor: BORDER_COLOR,
-                    label: &config.title,
-                    data: datapoints,
-                }],
-            },
-            options: OptionsConfig {
-                tooltips: TooltipsConfig {
-                    callbacks: TooltipCallbacks { title: title_cb },
-                },
-                scales: ScalesConfig {
-                    yAxes: vec![AxisConfig {
-                        ticks: TicksConfig {
-                            beginAtZero: true,
-                            callback: yaxis_cb,
-                        },
-                    }],
-                },
-                onClick: on_click,
-            },
+        let chart_config = js_obj! {
+            type => js_ref!("line"),
+            data => js_obj! {
+                labels => &labels.into_iter().map(JsValue::from).collect::<Array>(),
+                datasets => js_arr![js_obj! {
+                    backgroundColor => js_ref!(BACKGROUND_COLOR),
+                    borderColor => js_ref!(BORDER_COLOR),
+                    label => js_ref!(&config.title),
+                    data => &datapoints.into_iter().map(JsValue::from).collect::<Array>(),
+                }.as_ref()].as_ref(),
+            }.as_ref(),
+            options => js_obj! {
+                tooltips => js_obj! {
+                    callbacks => js_obj! {
+                        title => title_cb.as_ref(),
+                    }.as_ref(),
+                }.as_ref(),
+                scales => js_obj! {
+                    yAxes => js_arr![js_obj! {
+                        ticks => js_obj! {
+                            beginAtZero => js_ref!(true),
+                            callback => yaxis_cb.as_ref()
+                        }.as_ref(),
+                    }.as_ref()].as_ref(),
+                }.as_ref(),
+                onClick => on_click.as_ref(),
+            }.as_ref(),
         };
 
-        let chart = Chart::new(target, serde_wasm_bindgen::to_value(&config));
+        let chart = Chart::new(target, chart_config);
         ChartJs {
             chart,
             _closures: closures,
@@ -142,58 +134,4 @@ impl Drop for ChartJs {
     fn drop(&mut self) {
         self.chart.destroy();
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct Config<'a> {
-    r#type: &'a str,
-    data: DataConfig<'a>,
-    options: OptionsConfig<'a>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct DataConfig<'a> {
-    labels: Vec<&'a str>,
-    datasets: Vec<DatasetConfig<'a>>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct DatasetConfig<'a> {
-    backgroundColor: &'a str,
-    borderColor: &'a str,
-    label: &'a str,
-    data: Vec<Option<f64>>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct OptionsConfig<'a> {
-    tooltips: TooltipsConfig<'a>,
-    scales: ScalesConfig<'a>,
-    onClick: &'a JsValue,
-}
-
-#[derive(Serialize, Deserialize)]
-struct TooltipsConfig<'a> {
-    callbacks: TooltipCallbacks<'a>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct TooltipCallbacks<'a> {
-    title: &'a JsValue,
-}
-
-#[derive(Serialize, Deserialize)]
-struct ScalesConfig<'a> {
-    yAxes: Vec<AxisConfig<'a>>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct AxisConfig<'a> {
-    ticks: TicksConfig<'a>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct TicksConfig<'a> {
-    beginAtZero: bool,
-    callback: &'a JsValue,
 }
