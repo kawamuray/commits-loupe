@@ -3,6 +3,7 @@ use crate::component::CommitViewData;
 use js_sys::{Array, Map, Object, Reflect};
 use log::*;
 use number_prefix::NumberPrefix;
+use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
@@ -22,6 +23,7 @@ extern "C" {
 
 }
 
+/// Create an instance of JS `Closure<T>`, store it into vec, and return the reference to it.
 macro_rules! closure {
     ($store:expr, $type:ty, $fn:expr) => {{
         let closure = Closure::wrap(Box::new($fn) as Box<$type>);
@@ -52,59 +54,8 @@ impl chart::Chart for ChartJs {
         for commit in commits.iter().rev() {
             labels.push(commit.sha_short());
             let value = data.metadata.get(&commit.sha);
-            datapoints.push(value);
+            datapoints.push(value.map(|v| *v));
         }
-
-        let options = Map::new();
-        options.set(&JsValue::from_str("type"), &JsValue::from_str("line"));
-        options.set(
-            &JsValue::from_str("data"),
-            &Object::from_entries(
-                &Map::new()
-                    .set(
-                        &JsValue::from_str("labels"),
-                        &labels
-                            .into_iter()
-                            .map(|v| JsValue::from_str(&v))
-                            .collect::<Array>(),
-                    )
-                    .set(
-                        &JsValue::from_str("datasets"),
-                        &JsValue::from(Array::of1(
-                            &Object::from_entries(
-                                &Map::new()
-                                    .set(
-                                        &JsValue::from_str("label"),
-                                        &JsValue::from_str(&config.title),
-                                    )
-                                    .set(
-                                        &JsValue::from_str("backgroundColor"),
-                                        &JsValue::from_str(BACKGROUND_COLOR),
-                                    )
-                                    .set(
-                                        &JsValue::from_str("borderColor"),
-                                        &JsValue::from_str(BORDER_COLOR),
-                                    )
-                                    .set(
-                                        &JsValue::from_str("data"),
-                                        &datapoints
-                                            .into_iter()
-                                            .map(|v| {
-                                                if let Some(val) = v {
-                                                    JsValue::from_f64(*val)
-                                                } else {
-                                                    JsValue::NULL
-                                                }
-                                            })
-                                            .collect::<Array>(),
-                                    ),
-                            )
-                            .unwrap(),
-                        )),
-                    ),
-            )
-            .unwrap(),
-        );
 
         let mut closures: Vec<Box<dyn Drop>> = Vec::new();
 
@@ -151,59 +102,35 @@ impl chart::Chart for ChartJs {
                 JsValue::from_str(&val)
             }
         );
-        options.set(
-            &JsValue::from_str("options"),
-            &Object::from_entries(
-                &Map::new()
-                    .set(
-                        &JsValue::from_str("tooltips"),
-                        &Object::from_entries(
-                            &Map::new().set(
-                                &JsValue::from_str("callbacks"),
-                                &Object::from_entries(
-                                    &Map::new().set(&JsValue::from_str("title"), title_cb.as_ref()),
-                                )
-                                .unwrap(),
-                            ),
-                        )
-                        .unwrap(),
-                    )
-                    .set(
-                        &JsValue::from_str("scales"),
-                        &Object::from_entries(
-                            &Map::new().set(
-                                &JsValue::from_str("yAxes"),
-                                &JsValue::from(Array::of1(
-                                    &Object::from_entries(
-                                        &Map::new().set(
-                                            &JsValue::from_str("ticks"),
-                                            &Object::from_entries(
-                                                &Map::new()
-                                                    .set(
-                                                        &JsValue::from_str("beginAtZero"),
-                                                        &JsValue::from_bool(true),
-                                                    )
-                                                    .set(
-                                                        &JsValue::from_str("callback"),
-                                                        yaxis_cb.as_ref(),
-                                                    ),
-                                            )
-                                            .unwrap(),
-                                        ),
-                                    )
-                                    .unwrap(),
-                                )),
-                            ),
-                        )
-                        .unwrap(),
-                    )
-                    .set(&JsValue::from_str("onClick"), on_click.as_ref()),
-            )
-            .unwrap(),
-        );
 
-        let chart = Chart::new(target, Object::from_entries(&options).unwrap());
+        let config = Config {
+            r#type: "line",
+            data: DataConfig {
+                labels,
+                datasets: vec![DatasetConfig {
+                    backgroundColor: BACKGROUND_COLOR,
+                    borderColor: BORDER_COLOR,
+                    label: &config.title,
+                    data: datapoints,
+                }],
+            },
+            options: OptionsConfig {
+                tooltips: TooltipsConfig {
+                    callbacks: TooltipCallbacks { title: title_cb },
+                },
+                scales: ScalesConfig {
+                    yAxes: vec![AxisConfig {
+                        ticks: TicksConfig {
+                            beginAtZero: true,
+                            callback: yaxis_cb,
+                        },
+                    }],
+                },
+                onClick: on_click,
+            },
+        };
 
+        let chart = Chart::new(target, serde_wasm_bindgen::to_value(&config));
         ChartJs {
             chart,
             _closures: closures,
@@ -215,4 +142,58 @@ impl Drop for ChartJs {
     fn drop(&mut self) {
         self.chart.destroy();
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct Config<'a> {
+    r#type: &'a str,
+    data: DataConfig<'a>,
+    options: OptionsConfig<'a>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DataConfig<'a> {
+    labels: Vec<&'a str>,
+    datasets: Vec<DatasetConfig<'a>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DatasetConfig<'a> {
+    backgroundColor: &'a str,
+    borderColor: &'a str,
+    label: &'a str,
+    data: Vec<Option<f64>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct OptionsConfig<'a> {
+    tooltips: TooltipsConfig<'a>,
+    scales: ScalesConfig<'a>,
+    onClick: &'a JsValue,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TooltipsConfig<'a> {
+    callbacks: TooltipCallbacks<'a>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TooltipCallbacks<'a> {
+    title: &'a JsValue,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ScalesConfig<'a> {
+    yAxes: Vec<AxisConfig<'a>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct AxisConfig<'a> {
+    ticks: TicksConfig<'a>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TicksConfig<'a> {
+    beginAtZero: bool,
+    callback: &'a JsValue,
 }
