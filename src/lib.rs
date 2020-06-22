@@ -10,7 +10,6 @@ mod dataset;
 mod query;
 mod range;
 
-use std::convert::TryFrom;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -20,10 +19,10 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-pub fn create(config: &JsValue) -> Result<(), JsValue> {
+pub fn create(config: JsValue) -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::default());
     yew::initialize();
-    let config = config::Config::try_from(config).unwrap();
+    let config: config::Config = serde_wasm_bindgen::from_value(config)?;
     let elem = yew::utils::document()
         .query_selector(&config.on)
         .unwrap()
