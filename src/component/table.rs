@@ -16,13 +16,17 @@ pub struct Properties {
 
 impl TableComponent {
     fn view_commit_table_entry(data: &CommitViewData, commit: &CommitInfo) -> Html {
-        let throughput = data.metadata.get(&commit.sha).expect("missing meta value");
+        let throughput = data
+            .metadata
+            .get(&commit.sha)
+            .map(|v| format!("{:.2}", v))
+            .unwrap_or_else(|| "N/A".to_string());
         html! {
           <tr>
             <th><a href=commit.view_url.clone()>{ commit.sha_short() }</a></th>
             <th>{ commit.author_date_str() }</th>
             <th>{ commit.message_headline() }</th>
-            <th>{ format!("{:.2}", throughput) }</th>
+            <th>{ throughput }</th>
           </tr>
         }
     }

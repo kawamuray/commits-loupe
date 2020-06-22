@@ -24,7 +24,7 @@ where
     props: Properties,
     range: Range,
     apis: container::Apis<CachedCommitsApi, CachedMetadataApi>,
-    phantom: PhantomData<C>,
+    _phantom: PhantomData<C>,
 }
 
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl<C: Chart> Component for LoupeComponent<C> {
             props,
             range,
             apis,
-            phantom: PhantomData,
+            _phantom: PhantomData,
         }
     }
 
