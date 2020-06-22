@@ -7,8 +7,8 @@ use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::Element;
 
-const BORDER_COLOR: &'static str = "rgba(1,169,244,0.5)";
-const BACKGROUND_COLOR: &'static str = "rgba(1,169,244,0.2)";
+const BORDER_COLOR: &str = "rgba(1,169,244,0.5)";
+const BACKGROUND_COLOR: &str = "rgba(1,169,244,0.2)";
 
 #[wasm_bindgen(module = "chart.js")]
 extern "C" {
@@ -44,7 +44,7 @@ impl chart::Chart for ChartJs {
         for commit in commits.iter().rev() {
             labels.push(commit.sha_short());
             let value = data.metadata.get(&commit.sha);
-            datapoints.push(value.map(|v| *v));
+            datapoints.push(value.copied());
         }
 
         let mut closures: Vec<Box<dyn Drop>> = Vec::new();
