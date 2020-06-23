@@ -1,5 +1,5 @@
 const path = require('path');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 
 const distPath = path.resolve(__dirname, "dist");
@@ -9,6 +9,7 @@ const mainConfig = (env, argv) => {
         entry: './bootstrap.js',
         output: {
             path: distPath,
+            publicPath: "https://cdn.jsdelivr.net/gh/kawamuray/commits-loupe/dist/",
             filename: "commits-loupe.js",
             webassemblyModuleFilename: "commits-loupe.wasm",
             library: 'commitsLoupe'
@@ -22,7 +23,7 @@ const mainConfig = (env, argv) => {
             new WasmPackPlugin({
                 crateDirectory: ".",
                 extraArgs: "--no-typescript",
-            })
+            }),
         ],
         watch: argv.mode !== 'production'
     };
@@ -43,13 +44,6 @@ const styleConfig = {
             },
         ],
     },
-    plugins: [
-        new CopyWebpackPlugin({
-            patterns: [
-                { from: './static', to: distPath }
-            ]
-        }),
-    ],
 };
 
 module.exports = [mainConfig, styleConfig];

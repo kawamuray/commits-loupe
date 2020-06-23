@@ -1,5 +1,5 @@
 require('purecss')
-import './static/commits-loupe.css'
+import './static/commits-loupe-style.css'
 
 function classRemap(mapping) {
     for (var selector in mapping) {
