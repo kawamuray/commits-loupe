@@ -4,6 +4,8 @@ rust:
 cache:
 - cargo
 - yarn
+before_install:
+- yarn install
 script: yarn run build
 deploy:
   provider: releases
