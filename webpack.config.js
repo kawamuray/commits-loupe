@@ -3,14 +3,16 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin');
 
 const distPath = path.resolve(__dirname, "dist");
-module.exports = (env, argv) => {
+
+const mainConfig = (env, argv) => {
     return {
         entry: './bootstrap.js',
         output: {
             path: distPath,
             // publicPath: "commits-loupe/",
             filename: "commits-loupe.js",
-            webassemblyModuleFilename: "commits-loupe.wasm"
+            webassemblyModuleFilename: "commits-loupe.wasm",
+            library: 'commitsLoupe'
         },
         devServer: {
             contentBase: distPath,
@@ -18,11 +20,6 @@ module.exports = (env, argv) => {
             port: 8000
         },
         plugins: [
-            new CopyWebpackPlugin({
-                patterns: [
-                    { from: './static', to: distPath }
-                ]
-            }),
             new WasmPackPlugin({
                 crateDirectory: ".",
                 extraArgs: "--no-typescript",
@@ -31,3 +28,29 @@ module.exports = (env, argv) => {
         watch: argv.mode !== 'production'
     };
 };
+
+const styleConfig = {
+    entry: './style.js',
+    output: {
+        path: distPath,
+        filename: "commits-loupe-style.js",
+        library: 'commitsLoupeStyle'
+    },
+    module: {
+        rules: [
+            {
+                test: /\.css$/i,
+                use: ['style-loader', 'css-loader'],
+            },
+        ],
+    },
+    plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: './static', to: distPath }
+            ]
+        }),
+    ],
+};
+
+module.exports = [mainConfig, styleConfig];
