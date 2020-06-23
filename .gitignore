@@ -5,4 +5,4 @@ Cargo.lock
 # Yarn
 yarn-error.log
 /node_modules
-/dist
+/pkg

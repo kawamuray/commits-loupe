@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Commits Loupe Demo</title>
+    <style>
+    </style>
+  </head>
+  <body>
+    <h1>Commits Loupe Demo</h1>
+    <div id="loupe-screen"></div>
+    <script src="/commits-loupe.js"></script>
+    <script src="/commits-loupe-style.js"></script>
+    <script>
+      commitsLoupe.ready(cloupe => {
+          cloupe.create({
+              on: "#loupe-screen",
+              repo: "kawamuray/decaton",
+              branch: "bmt-revise",
+              data_url: "https://kawamuray.github.io/decaton/commit-data",
+              components: {
+                  show_table: false,
+                  show_range: false,
+              },
+              data: [
+                  {
+                      title: "0ms latency / Throughput",
+                      file: "tasks_100k_latency_0ms_concurrency_20-benchmark.json",
+                      query: "performance.throughput",
+                  },
+                  {
+                      title: "10ms latency / Throughput",
+                      file: "tasks_10k_latency_10ms_concurrency_20-benchmark.json",
+                      query: "performance.throughput",
+                  },
+                  {
+                      title: "10ms latency / Execution Time",
+                      file: "tasks_10k_latency_10ms_concurrency_20-benchmark.json",
+                      query: "performance.executionTime",
+                  }
+              ],
+          });
+
+          commitsLoupeStyle.initStyle();
+      });
+    </script>
+  </body>
+</html>
