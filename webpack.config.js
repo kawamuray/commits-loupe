@@ -9,7 +9,6 @@ const mainConfig = (env, argv) => {
         entry: './bootstrap.js',
         output: {
             path: distPath,
-            // publicPath: "commits-loupe/",
             filename: "commits-loupe.js",
             webassemblyModuleFilename: "commits-loupe.wasm",
             library: 'commitsLoupe'
