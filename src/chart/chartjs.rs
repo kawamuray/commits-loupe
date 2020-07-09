@@ -38,10 +38,16 @@ impl ChartJs {
 
 impl chart::Chart for ChartJs {
     fn create(target: Element, config: &chart::Config, data: &CommitViewData) -> Self {
-        let commits = Rc::new(data.commits.iter().map(Clone::clone).collect::<Vec<_>>());
+        let commits = Rc::new(
+            data.commits
+                .iter()
+                .map(Clone::clone)
+                .rev()
+                .collect::<Vec<_>>(),
+        );
         let mut labels = Vec::with_capacity(commits.len());
         let mut datapoints = Vec::with_capacity(commits.len());
-        for commit in commits.iter().rev() {
+        for commit in commits.iter() {
             labels.push(commit.sha_short());
             let value = data.metadata.get(&commit.sha);
             datapoints.push(value.copied());
