@@ -12,7 +12,6 @@ function ready(cb) {
     var items = url.pathname.split('/');
     items[items.length - 1] = '';
     url.pathname = items.join('/');
-    console.log("public path = " + url.toString());
     const path_save = __webpack_public_path__;
     __webpack_public_path__ = url.toString();
 
